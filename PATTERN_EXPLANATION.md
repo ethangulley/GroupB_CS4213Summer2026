@@ -1,15 +1,16 @@
-# Abstract Factory Pattern Explanation
+# Abstract Factory Pattern
 
 ## Design Problem
 
-The checkout system needs different tax and currency rules for different customer regions. A simple procedural approach would place regional logic directly inside checkout code with `if` or `switch` statements.
+The checkout system needs different tax and currency rules for different customer
+regions. A procedural solution puts those rules directly inside checkout code with
+`if / else` or `switch` statements. As more regions are added, that checkout method
+becomes harder to read, test, and maintain.
 
-That creates a problem because every new region requires editing the checkout logic, which makes the system harder to read, test, and extend.
+## No-Pattern Comparison
 
-## Region Implementation in Previous Application Version without the Abstract Factory Pattern.
-
-`ProceduralCheckoutExample` shows the same checkout idea without a design pattern. It keeps
-the region rules in one method with an `if / else if / else` chain:
+`ProceduralCheckoutExample` demonstrates the older procedural approach. It keeps
+region selection, tax policy, and currency formatting in one method:
 
 ```java
 if (regionName.equalsIgnoreCase("United States")) {
@@ -27,48 +28,42 @@ if (regionName.equalsIgnoreCase("United States")) {
 }
 ```
 
-This class is useful for comparison, but it shows the weakness from the proposal: checkout
-logic, tax policy, currency formatting, and region selection are all mixed together. Adding a
-new country means editing this method again, which increases regression risk as the chain grows.
-It also cannot naturally support admin-created runtime factories without adding more conditionals
-or redesigning the code.
+This works for a small demo, but each new region requires editing the same checkout
+logic. That increases regression risk and makes runtime admin-created regions hard
+to support without adding more conditionals.
 
-## Pattern Intent
+## Factory-Based Design
 
-The Abstract Factory Pattern provides an interface for creating related objects without tying the client code to their concrete classes.
+The current app uses the Abstract Factory Pattern. `RegionFactory` defines a common
+interface for creating a matching family of checkout objects:
 
-In this prototype, each regional factory creates the services needed for that region:
+- `TaxCalculator`
+- `CurrencyFormatter`
 
-- A tax calculator
-- A currency formatter
+Concrete factories such as `UnitedStatesFactory`, `UnitedKingdomFactory`, and
+`ConfigurableRegionFactory` provide the correct objects for each region. `Checkout`
+only depends on the `RegionFactory` interface, so it does not need to know which
+region is selected or which concrete classes are being used.
 
-The app ships with concrete U.S. and U.K. factories. An admin can also create a configurable
-factory at runtime by supplying a region name, tax rate, and currency code. The shopper flow
-uses the same registry for both built-in factories and admin-created factories.
+## Interaction Flow
 
-## Interactions
+1. A user logs in as `admin` or `shopper`.
+2. Admins can add a new `ConfigurableRegionFactory`.
+3. Shoppers choose a checkout region.
+4. `RegionFactoryRegistry` returns the selected `RegionFactory`.
+5. `Checkout` asks the factory for a tax calculator and currency formatter.
+6. The receipt prints the region, factory used, subtotal, tax, and total.
 
-1. A user logs in as either `admin` or `shopper`.
-2. Admins can add a new `ConfigurableRegionFactory` to `RegionFactoryRegistry`.
-3. Shoppers select a checkout region from the terminal menu.
-4. `RegionFactoryRegistry` returns the matching `RegionFactory`.
-5. `ConsoleCheckoutApp` gives the factory to `Checkout`.
-6. The factory creates the matching tax calculator and currency formatter.
-7. `Checkout` uses those objects without knowing their concrete classes.
+## Benefits
 
-## How It Improves the Design
+- Maintainability: regional rules are separated from checkout workflow.
+- Extensibility: new regions can be added without rewriting `Checkout`.
+- Readability: each factory groups related regional behavior together.
+- Flexibility: admin-created factories can be used immediately by shoppers.
 
-- Maintainability: Regional rules are separated from checkout logic.
-- Flexibility: A new region can be added with a new factory and related classes.
-- Readability: Checkout code focuses only on creating the receipt.
-- Extensibility: Tax and currency behavior can change per region without rewriting checkout.
+## Tradeoffs
 
-Compared to `ProceduralCheckoutExample`, this avoids placing all regional tax and formatting
-rules inside one large conditional block. `Checkout` only asks a `RegionFactory` for the matching
-objects, so the checkout workflow stays stable when regions change.
-
-## Tradeoffs and Limitations
-
-- More classes are required than a simple procedural solution.
-- The pattern can feel unnecessary for very small systems.
-- Adding a new service type, such as shipping rules, would require updating the factory interface and every factory implementation.
+- More classes are required than in the procedural version.
+- The pattern may be unnecessary for very small systems.
+- Adding a new product type, such as shipping rules, would require updating the
+  factory interface and each factory implementation.
